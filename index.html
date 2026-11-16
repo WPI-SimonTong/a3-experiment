@@ -1,62 +1,90 @@
 <!DOCTYPE html>
-<div id="container"></div>
+<html lang="en">
+<body>
+<div>
+  <b>What percentage do you believe the smaller value represents relative to the larger value?</b>
+  <div id="chart"></div>
+  <div id="test-values"></div>
+</div>
 <script type="module">
 
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-function createSquares(data, targetIndices, width, height) {
-  const root = d3.hierarchy({
-    children: data.map(value => ({ value }))
-  }).sum(d => d.value);
+// Chart dimensions
+const width = 500;
+const height = 500;
+const margin = {top: 30, right: 30, bottom: 50, left: 60};
+const chartWidth = width - margin.left - margin.right;
+const chartHeight = height - margin.top - margin.bottom;
 
-  d3.pack()
-    .size([width, height])
-    .padding(2)(root);
-
-  const svg = d3.select("#container")
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height);
-
-  svg.selectAll("rect")
-    .data(root.leaves())
-    .enter()
-    .append("rect")
-    .attr("x", d => d.x - d.r / Math.sqrt(2))
-    .attr("y", d => d.y - d.r / Math.sqrt(2))
-    .attr("width", d => d.r * Math.sqrt(2))
-    .attr("height", d => d.r * Math.sqrt(2))
-    .attr("fill", (d, i) => targetIndices.includes(i) ? "red" : "white")
-    .attr("stroke", "black")
+// Generate 5 random block sizes that add up to 100 with a minumum of 10% for each block
+function generateValues(count) {
+  const values = [];
+  let total = 0;
+  for (let i = 0; i < count; i++) {
+    const value = Math.random()*(100-total-(count-i-1)*10-10)+10;
+    values.push(value);
+    total += value;
+  }
+  // Normalize to ensure they sum to exactly 100
+  const sum = values.reduce((a, b) => a + b, 0);
+  return values.map(v => (v / sum) * 100);
 }
+const dataset = generateValues(5);
 
-try {
-    const numValues = 5;
+// Select 2 random blocks
+const chosenIndices = d3.shuffle(d3.range(5)).slice(0, 2);
 
-    const randomUni = d3.randomUniform(0, 100);
+// Get selected values
+const selectedValues = chosenIndices.map(i => dataset[i]);
+const smaller = Math.min(...selectedValues);
+const larger = Math.max(...selectedValues);
+const answer = (smaller / larger) * 100;
 
-    const chosenValues = d3.shuffle(d3.range(numValues)).slice(0, 2);
+// Print testing information
+console.log("Block values:", dataset);
+console.log("Selected blocks:", chosenIndices);
+console.log("Correct answer:", answer.toFixed(2) + "%");
 
-    const dataset = Array.from({ length: numValues }, () => randomUni());
-    
-    console.log("Random Dataset:", dataset);
+// Create SVG
+const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
+const g = svg.append("g").attr("transform",`translate(${margin.left}, ${margin.top})`);
 
-    // displays in browser change this
-    d3.select("body")
-      .selectAll("p")
-      .data(dataset)
-      .enter()
-      .append("p")
-      .html((d, i) => 
-        chosenValues.includes(i)
-          ? `<b>Value: ${d.toFixed(2)}</b>`
-          : `Value: ${d.toFixed(2)}`
-      );
+// Y scale
+const yScale = d3.scaleLinear().domain([0, 100]).range([chartHeight, 0]);
+// bottom baseline for the blocks
+const xScale = d3.scaleLinear().domain([0, 1]).range([0, chartWidth]);
+// Y axis: only show 0 and 100
+g.append("g").call(d3.axisLeft(yScale).tickValues([0, 100]));
+// X axis
+g.append("g").attr("transform", `translate(0, ${chartHeight})`).call(d3.axisBottom(xScale).tickValues([0]));
 
-    createSquares(dataset, chosenValues, 500, 500);
+// Convert block values into vertical positions
+let total = 0;
 
-  } catch (err) {
-    console.error("Error generating random data:", err)
-}
+const blocks = dataset.map((value, index) => {
+  const block = {index: index, value: value, start: total, end: total + value};
+  total += value;
+  return block;
+});
+
+// Draw the 5 blocks
+g.selectAll(".block").data(blocks).enter().append("rect")
+  .attr("class", "block")
+  .attr("x", chartWidth / 2 - 170 / 2)
+  .attr("y", d => yScale(d.end))
+  .attr("width", 170)
+  .attr("height", d => yScale(d.start) - yScale(d.end))
+  .attr("fill", d =>chosenIndices.includes(d.index)? "#670067" : "white")
+  .attr("stroke", "black")
+  .attr("stroke-width", 1.5);
+
+// Display actual values for testing only
+d3.select("#test-values").html(`<b>TESTING ONLY - Actual block values listed from bottom to top:</b><br>
+    ${blocks.map(d =>`Block ${d.index + 1}: ${d.value.toFixed(2)}%`).join("<br>")}
+    <b>Selected blocks:</b>${chosenIndices.map(i => i + 1).join(", ")}
+    <b>Correct answer:</b> ${answer.toFixed(2)}%`);
 
 </script>
+</body>
+</html>
