@@ -26,8 +26,17 @@ function createSquares(data, targetIndices, width, height) {
     .attr("y", d => d.y - d.r / Math.sqrt(2))
     .attr("width", d => d.r * Math.sqrt(2))
     .attr("height", d => d.r * Math.sqrt(2))
-    .attr("fill", (d, i) => targetIndices.includes(i) ? "red" : "white")
+    .attr("fill", "white")
     .attr("stroke", "black")
+    .attr("stroke-width", Math.min(width, height) / 500);
+
+  svg.selectAll("path")
+    .data(root.leaves().filter((d, i) => targetIndices.includes(i)))
+    .enter()
+    .append("path")
+    .attr("d", d3.symbol().type(d3.symbolTriangle).size(Math.min(width, height) / 4))
+    .attr("transform", d => `translate(${d.x}, ${d.y - d.r / Math.sqrt(2) - Math.sqrt(Math.min(width, height) / (Math.sqrt(3) * 2))}) rotate(180)`)
+    .attr("fill", "black");
 }
 
 try {
