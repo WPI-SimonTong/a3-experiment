@@ -5,9 +5,13 @@
 import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
 try {
+    const numValues = 5;
+
     const randomUni = d3.randomUniform(0, 100);
 
-    const dataset = Array.from({ length: 5 }, () => randomUni());
+    const chosenValues = d3.shuffle(d3.range(numValues)).slice(0, 2);
+
+    const dataset = Array.from({ length: numValues }, () => randomUni());
     
     console.log("Random Dataset:", dataset);
 
@@ -17,7 +21,11 @@ try {
       .data(dataset)
       .enter()
       .append("p")
-      .text(d => `Value: ${d.toFixed(2)}`);
+      .html((d, i) => 
+        chosenValues.includes(i)
+          ? `<b>Value: ${d.toFixed(2)}</b>`
+          : `Value: ${d.toFixed(2)}`
+      );
 
   } catch (err) {
     console.error("Error generating random data:", err)
