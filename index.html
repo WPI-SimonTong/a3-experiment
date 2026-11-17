@@ -4,7 +4,13 @@
 <body>
     <div>
         <b>What percentage do you believe the smaller value represents relative to the larger value?</b>
+
         <div id="chart"></div>
+        <div id="answer-box" style="margin-bottom: 20px">
+            <label for="answer">Answer:</label>
+            <input id="answer" placeholder="Within 2 decimal points"></input>
+        </div>
+
         <div id="test-values"></div>
     </div>
 
@@ -68,10 +74,10 @@
 
             // Add Y axis
             var y = d3.scaleLinear()
-                .domain([0, 100])
+                .domain([0, 0])
                 .range([height, 0]);
             const yAxis = d3.axisLeft(y)
-                .ticks(1);
+                .ticks(0);
             svg.append("g")
                 .call(yAxis);
 
@@ -115,7 +121,7 @@
             // X axis
             g.append("g")
                 .attr("transform", `translate(0, ${height})`)
-                .call(d3.axisBottom(xScale).tickValues([0]));
+                .call(d3.axisBottom(xScale).tickValues([]));
 
             // Convert normalized values into vertical positions
             let total = 0;
@@ -149,7 +155,7 @@
             // Add black dots to the two selected blocks
             g.append("g")
                 .selectAll("dot")
-            .data(blocks.filter(d => targetIndices.includes(d.index)))
+                .data(blocks.filter(d => targetIndices.includes(d.index)))
                 .enter()
                 .append("circle")
                 .attr("cx", width / 2)
@@ -159,7 +165,7 @@
 
             return blocks;
         }
-        
+
         try {
             // Chart dimensions
             const width = 500;
@@ -169,18 +175,32 @@
             const chartHeight = height - margin.top - margin.bottom;
 
             // Normal Data
+            const dataset = [];
             const numValues = 5;
             const randomUni = d3.randomUniform(0, 100);
             const chosenValues = d3.shuffle(d3.range(numValues)).slice(0, 2);
-            const dataset = Array.from({ length: numValues }, () => randomUni());
+
+            // Minimum Spacing for scatter dot plots
+            const minSpacingPx = 12;
+            const maxDotRadius = 5;
+            const minValueSpacing =
+                ((2 * maxDotRadius + minSpacingPx) / chartWidth) * 100;
+
+
+            while (dataset.length < numValues) {
+                const candidate = randomUni();
+
+                if (dataset.every(value =>
+                    Math.abs(value - candidate) >= minValueSpacing
+                )) {
+                    dataset.push(candidate);
+                }
+            }
             console.log("Random Dataset:", dataset);
 
             // Scatter Plot Shared Y Data
             const sharedY = randomUni();
-            const scatter_data = Array.from({ length: 5 }, () => ({
-                x: randomUni(),
-                y: sharedY
-            }));
+            const scatter_data = dataset.map(x => ({ x, y: sharedY }));
 
             // Normalize data
             const sum = dataset.reduce((a, b) => a + b, 0);
