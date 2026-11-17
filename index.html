@@ -1,168 +1,224 @@
-
 <!DOCTYPE html>
 <html lang="en">
+
 <body>
-<div>
-  <b>What percentage do you believe the smaller value represents relative to the larger value?</b>
-  <div id="chart"></div>
-  <div id="test-values"></div>
-</div>
+    <div>
+        <b>What percentage do you believe the smaller value represents relative to the larger value?</b>
+        <div id="chart"></div>
+        <div id="test-values"></div>
+    </div>
 
-<script type="module">
+    <script type="module">
 
-import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+        import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 
-function createSquares(data, targetIndices, width, height) {
-  const root = d3.hierarchy({
-    children: data.map(value => ({ value }))
-  }).sum(d => d.value);
+        function createSquares(dataset, targetIndices, width, height) {
+            const root = d3.hierarchy({
+                children: dataset.map(value => ({ value }))
+            }).sum(d => d.value);
 
-  d3.pack()
-    .size([width, height])
-    .padding(2)(root);
+            d3.pack()
+                .size([width, height])
+                .padding(2)(root);
 
-  const svg = d3.select("#container")
-    .append("svg")
-    .attr("width", width)
-    .attr("height", height);
+            const svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
 
-  svg.selectAll("rect")
-    .data(root.leaves())
-    .enter()
-    .append("rect")
-    .attr("x", d => d.x - d.r / Math.sqrt(2))
-    .attr("y", d => d.y - d.r / Math.sqrt(2))
-    .attr("width", d => d.r * Math.sqrt(2))
-    .attr("height", d => d.r * Math.sqrt(2))
-    .attr("fill", "white")
-    .attr("stroke", "black")
-    .attr("stroke-width", Math.min(width, height) / 500);
+            svg.selectAll("rect")
+                .data(root.leaves())
+                .enter()
+                .append("rect")
+                .attr("x", d => d.x - d.r / Math.sqrt(2))
+                .attr("y", d => d.y - d.r / Math.sqrt(2))
+                .attr("width", d => d.r * Math.sqrt(2))
+                .attr("height", d => d.r * Math.sqrt(2))
+                .attr("fill", "white")
+                .attr("stroke", "black")
+                .attr("stroke-width", Math.min(width, height) / 500);
 
-  svg.selectAll("path")
-    .data(root.leaves().filter((d, i) => targetIndices.includes(i)))
-    .enter()
-    .append("path")
-    .attr("d", d3.symbol().type(d3.symbolTriangle).size(Math.min(width, height) / 4))
-    .attr("transform", d => `translate(${d.x}, ${d.y - d.r / Math.sqrt(2) - Math.sqrt(Math.min(width, height) / (Math.sqrt(3) * 2))}) rotate(180)`)
-    .attr("fill", "black");
-}
+            svg.selectAll("path")
+                .data(root.leaves().filter((d, i) => targetIndices.includes(i)))
+                .enter()
+                .append("path")
+                .attr("d", d3.symbol().type(d3.symbolTriangle).size(Math.min(width, height) / 4))
+                .attr("transform", d => `translate(${d.x}, ${d.y - d.r / Math.sqrt(2) - Math.sqrt(Math.min(width, height) / (Math.sqrt(3) * 2))}) rotate(180)`)
+                .attr("fill", "black");
+        }
 
-// Chart dimensions
-const width = 500;
-const height = 500;
-const margin = {top: 30, right: 30, bottom: 50, left: 60};
-const chartWidth = width - margin.left - margin.right;
-const chartHeight = height - margin.top - margin.bottom;
+        function createScatter(dataset, targetIndices, margin, width, height) {
+            const svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform",
+                    "translate(" + margin.left + "," + margin.top + ")");
 
-// Generate random dataset using your exact code
-try {
-    const numValues = 5;
-    const randomUni = d3.randomInt(0, 100);
-    const chosenValues = d3.shuffle(d3.range(numValues)).slice(0, 2);
-    const dataset = Array.from({ length: numValues }, () => randomUni());
-    console.log("Random Dataset:", dataset);
+            // Add X Axis
+            var x = d3.scaleLinear()
+                .domain([0, 100])
+                .range([0, width]);
+            const xAxis = d3.axisBottom(x)
+                .ticks(1);
+            svg.append("g")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis);
 
-    // Normalize to ensure all values add up to exactly 100%
-    const sum = dataset.reduce((a, b) => a + b, 0);
-    const normalizedDataset = dataset.map(v => (v / sum) * 100);
+            // Add Y axis
+            var y = d3.scaleLinear()
+                .domain([0, 100])
+                .range([height, 0]);
+            const yAxis = d3.axisLeft(y)
+                .ticks(1);
+            svg.append("g")
+                .call(yAxis);
 
-    // Select 2 random blocks
-    const chosenIndices = chosenValues;
+            // Add dots
+            svg.append('g')
+                .selectAll("dot")
+                .data(dataset)
+                .enter()
+                .append("circle")
+                .attr("cx", function (d) { return x(d.x); })
+                .attr("cy", function (d) { return y(d.y); })
+                .attr("r", (d, i) => targetIndices.includes(i) ? 5 : 3)
+                .style("fill", (d, i) => targetIndices.includes(i) ? "#000000" : "#ffffff")
+                .style("stroke", "#000000");
+        }
 
-    // Get selected values
-    const selectedValues = chosenIndices.map(i => normalizedDataset[i]);
-    const smaller = Math.min(...selectedValues);
-    const larger = Math.max(...selectedValues);
-    const answer = (smaller / larger) * 100;
+        function createBar(dataset, targetIndices, margin, width, height) {
+            // Create SVG
+            const svg = d3.select("#chart")
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
 
-    // Print testing information
-    console.log("Block values:", normalizedDataset);
-    console.log("Selected blocks:", chosenIndices);
-    console.log("Correct answer:", Math.round(answer) + "%");
+            const g = svg.append("g")
+                .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-    // Create SVG
-    const svg = d3.select("#chart")
-      .append("svg")
-      .attr("width", width)
-      .attr("height", height);
+            // Y scale
+            const yScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([height, 0]);
 
-    const g = svg.append("g")
-      .attr("transform", `translate(${margin.left}, ${margin.top})`);
+            // X scale
+            const xScale = d3.scaleLinear()
+                .domain([0, 1])
+                .range([0, width]);
 
-    // Y scale
-    const yScale = d3.scaleLinear()
-      .domain([0, 100])
-      .range([chartHeight, 0]);
+            // Y axis
+            g.append("g")
+                .call(d3.axisLeft(yScale).tickValues([0, 100]));
 
-    // X scale
-    const xScale = d3.scaleLinear()
-      .domain([0, 1])
-      .range([0, chartWidth]);
+            // X axis
+            g.append("g")
+                .attr("transform", `translate(0, ${height})`)
+                .call(d3.axisBottom(xScale).tickValues([0]));
 
-    // Y axis
-    g.append("g")
-      .call(d3.axisLeft(yScale).tickValues([0, 100]));
+            // Convert normalized values into vertical positions
+            let total = 0;
 
-    // X axis
-    g.append("g")
-      .attr("transform", `translate(0, ${chartHeight})`)
-      .call(d3.axisBottom(xScale).tickValues([0]));
-
-    // Convert normalized values into vertical positions
-    let total = 0;
-
-    const blocks = normalizedDataset.map((value, index) => {
-      const block = {
-        index: index,
-        value: value,
-        start: total,
-        end: total + value
-      };
-      total += value;
-      return block;
-    });
-
-    
-  // Draw the 5 blocks
-  g.selectAll(".block")
-    .data(blocks)
-    .enter()
-    .append("rect")
-    .attr("class", "block")
-    .attr("x", chartWidth / 2 - 170 / 2)
-    .attr("y", d => yScale(d.end))
-    .attr("width", 170)
-    .attr("height", d => yScale(d.start) - yScale(d.end))
-    .attr("fill", "white")
-    .attr("stroke", "black")
-    .attr("stroke-width", 1.5);
-
-  // Add black dots to the two selected blocks
-  g.append("g")
-    .selectAll("dot")
-    .data(blocks.filter(d => chosenIndices.includes(d.index)))
-    .enter()
-    .append("circle")
-    .attr("cx", chartWidth / 2)
-    .attr("cy", d => yScale((d.start + d.end) / 2))
-    .attr("r", 4)
-    .style("fill", "#000000");
+            const blocks = dataset.map((value, index) => {
+                const block = {
+                    index: index,
+                    value: value,
+                    start: total,
+                    end: total + value
+                };
+                total += value;
+                return block;
+            });
 
 
-    // Display actual values for testing only
-    d3.select("#test-values").html(`
+            // Draw the 5 blocks
+            g.selectAll(".block")
+                .data(blocks)
+                .enter()
+                .append("rect")
+                .attr("class", "block")
+                .attr("x", width / 2 - 170 / 2)
+                .attr("y", d => yScale(d.end))
+                .attr("width", 170)
+                .attr("height", d => yScale(d.start) - yScale(d.end))
+                .attr("fill", "white")
+                .attr("stroke", "black")
+                .attr("stroke-width", 1.5);
+
+            // Add black dots to the two selected blocks
+            g.append("g")
+                .selectAll("dot")
+            .data(blocks.filter(d => targetIndices.includes(d.index)))
+                .enter()
+                .append("circle")
+                .attr("cx", width / 2)
+                .attr("cy", d => yScale((d.start + d.end) / 2))
+                .attr("r", 4)
+                .style("fill", "#000000");
+
+            return blocks;
+        }
+        // Generate random dataset using your exact code
+        try {
+            // Chart dimensions
+            const width = 500;
+            const height = 500;
+            const margin = { top: 30, right: 30, bottom: 50, left: 60 };
+            const chartWidth = width - margin.left - margin.right;
+            const chartHeight = height - margin.top - margin.bottom;
+
+            // Normal Data
+            const numValues = 5;
+            const randomUni = d3.randomUniform(0, 100);
+            const chosenValues = d3.shuffle(d3.range(numValues)).slice(0, 2);
+            const dataset = Array.from({ length: numValues }, () => randomUni());
+            console.log("Random Dataset:", dataset);
+
+            // Scatter Plot Shared Y Data
+            const sharedY = randomUni();
+            const scatter_data = Array.from({ length: 5 }, () => ({
+                x: randomUni(),
+                y: sharedY
+            }));
+
+            // Normalize data
+            const sum = dataset.reduce((a, b) => a + b, 0);
+            const normalizedDataset = dataset.map(v => (v / sum) * 100);
+
+            // Target Indicies / Pairs
+            const chosenIndices = chosenValues;
+            const selectedValues = chosenIndices.map(i => normalizedDataset[i]);
+            const smaller = Math.min(...selectedValues);
+            const larger = Math.max(...selectedValues);
+            const answer = (smaller / larger) * 100;
+
+            createSquares(dataset, chosenIndices, chartWidth, chartHeight);
+            createScatter(scatter_data, chosenIndices, margin, chartWidth, chartHeight);
+            const blocks = createBar(normalizedDataset, chosenIndices, margin, chartWidth, chartHeight);
+
+            // Print testing information
+            console.log("Block values:", normalizedDataset);
+            console.log("Selected blocks:", chosenIndices);
+            console.log("Correct answer:", Math.round(answer) + "%");
+
+            // Display actual values for testing only
+            d3.select("#test-values").html(`
       <b>TESTING ONLY - Actual block values listed from bottom to top:</b><br>
       ${blocks.map(d =>
-        `Block ${d.index + 1}: ${Math.round(d.value)}%`
-      ).join("<br>")}
+                `Block ${d.index + 1}: ${Math.round(d.value)}%`
+            ).join("<br>")}
       <br><b>Selected blocks:</b> ${chosenIndices.map(i => i + 1).join(", ")}
       <br><b>Correct answer:</b> ${Math.round(answer)}%
     `);
 
-} catch (err) {
-    console.error("Error generating random data:", err);
-}
+        } catch (err) {
+            console.error("Error generating random data:", err);
+            d3.select("#test-values")
+                .text(`Unable to render the graphs: ${err.message}`);
+        }
 
-</script>
+    </script>
 </body>
+
 </html>
