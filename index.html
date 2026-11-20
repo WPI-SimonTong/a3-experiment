@@ -210,9 +210,6 @@
                     <button class="button button-primary" id="check-answer" type="button" disabled>
                         Check Answer
                     </button>
-                    <label class="correctness" for="answer">
-                        <hidden></hidden>
-                    </label>
                     <button class="button" id="next-question" type="button" disabled>
                         Next
                     </button>
@@ -448,16 +445,7 @@
             console.error("Error generating random data:", err);
             d3.select("#test-values")
                 .text(`Unable to render the graphs: ${err.message}`);
-        }
-
-        function showOneGraph() {
-
-        }
-
-        function checkAnswer() {
-            onclick() 
-        }
-
+        } 
     </script>
 </body>
 </html>
