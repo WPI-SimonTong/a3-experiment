@@ -186,10 +186,7 @@
         <aside class="sidebar" aria-label="Task and response">
             <section class="task" aria-labelledby="task-title">
                 <h1 class="task-title" id="task-title">Task:</h1>
-                <p class="task-description">
-                    Two values are marked with dots. What percentage do you believe the
-                    smaller value represents relative to the larger value?
-                </p>
+                <p class="task-description" id="task-description"></p>
             </section>
 
             <div class="response" id="answer-box">
@@ -209,6 +206,9 @@
                 <div class="button-row">
                     <button class="button" id="next-question" type="button">
                         Next
+                    </button>
+                    <button class="button" id="exit-experiment" type="button" hidden>
+                        Exit
                     </button>
                 </div>
             </div>
@@ -370,6 +370,54 @@
             const chartHeight = height - margin.top - margin.bottom;
             const answerInput = document.getElementById("answer");
             const nextButton = document.getElementById("next-question");
+            const exitButton = document.getElementById("exit-experiment");
+
+            // Show average response differences for each chart type
+            function showSummary(trialCount) {
+                const summaries = [
+                    { type: "dot", label: "Dot chart" },
+                    { type: "bar", label: "Bar chart" },
+                    { type: "square", label: "Square chart" }
+                ];
+
+                d3.select("#task-title").text("Experiment Summary:");
+                d3.select("#task-description").text(
+                    `Completed ${trialCount} trials. Average differences from the true percentage:`
+                );
+                d3.select("#test-values").html("");
+
+                summaries.forEach(summary => {
+                    const matchingTrials = chartTypes
+                        .map((chartType, index) => ({
+                            chartType,
+                            difference: userPercentages[index] - truePercentages[index]
+                        }))
+                        .filter(trial => trial.chartType === summary.type);
+
+                    const averageDifference = matchingTrials.length
+                        ? matchingTrials.reduce((total, trial) => total + trial.difference, 0) / matchingTrials.length
+                        : 0;
+                    const roundedDifference = Math.abs(averageDifference).toFixed(1);
+                    let comparison;
+
+                    if (averageDifference > 0.05) {
+                        comparison = `you answered ${roundedDifference}% higher than the true percentage`;
+                    } else if (averageDifference < -0.05) {
+                        comparison = `you answered ${roundedDifference}% lower than the true percentage`;
+                    } else {
+                        comparison = "you answered about the same as the true percentage";
+                    }
+
+                    d3.select("#test-values")
+                        .append("p")
+                        .style("margin", "6px 0")
+                        .text(`${summary.label}: ${comparison}.`);
+                });
+
+                answerInput.disabled = true;
+                nextButton.disabled = true;
+                exitButton.hidden = false;
+            }
             // CREATE CHART SCHEDULE (ONLY ONCE)
             const chartSchedule = [
               ...Array(20).fill("dot"),
@@ -396,15 +444,36 @@
                 const minSpacingPx = 12;
                 const maxDotRadius = 5;
                 const minValueSpacing = ((2 * maxDotRadius + minSpacingPx) / chartWidth) * 100;
-                while (dataset.length < numValues) {
-                  const candidate = randomUni();
-                  if (dataset.every(value =>Math.abs(value - candidate) >= minValueSpacing)){
-                    dataset.push(candidate);
+                // Keep the marked dots in a bar chart at least as visually separated
+                // as the dots in the scatter plot.
+                let normalizedDataset;
+                let blockMidpoints;
+                do {
+                  dataset.length = 0;
+                  while (dataset.length < numValues) {
+                    const candidate = randomUni();
+                    if (dataset.every(value => Math.abs(value - candidate) >= minValueSpacing)) {
+                      dataset.push(candidate);
+                    }
                   }
-                }
-                // Normalize data
-                const sum = dataset.reduce((a, b) => a + b, 0);
-                const normalizedDataset = dataset.map(value => (value / sum) * 100);
+                  // Normalize data
+                  const sum = dataset.reduce((a, b) => a + b, 0);
+                  normalizedDataset = dataset.map(value => (value / sum) * 100);
+
+                  let cumulativeValue = 0;
+                  blockMidpoints = normalizedDataset.map(value => {
+                    const start = cumulativeValue;
+                    cumulativeValue += value;
+                    return (start + cumulativeValue) / 2;
+                  });
+                } while (
+                  currentChartType === "bar" &&
+                  Math.abs(
+                    blockMidpoints[chosenIndices[0]] -
+                    blockMidpoints[chosenIndices[1]]
+                  ) * chartHeight / 100 <
+                  2 * maxDotRadius + minSpacingPx
+                );
                 // Calculate correct percentage
                 const selectedValues = chosenIndices.map(i => normalizedDataset[i]);
                 const smaller = Math.min(...selectedValues);
@@ -415,12 +484,18 @@
                   const sharedY = randomUni();
                   const scatterData = dataset.map(x => ({x: x, y: sharedY}));
                   createScatter(scatterData, chosenIndices, margin, chartWidth, chartHeight);
-                } 
+                  d3.select("#task-description")
+                    .text("Two values are marked with dots. \n Based on the positions of the marked dots along the horizontal scale, what percentage is the smaller value of the larger value?");
+                }
                 else if (currentChartType === "bar"){
                   createBar(normalizedDataset, chosenIndices, margin, chartWidth, chartHeight);
+                  d3.select("#task-description")
+                    .text("Two values are marked with dots. \n Based on the heights of the marked sections, what percentage is the smaller value of the larger value?");
                 }
                 else if (currentChartType === "square"){
                   createSquares(dataset, chosenIndices, chartWidth, chartHeight);
+                  d3.select("#task-description")
+                    .text("Two values are marked with triangles. \n Based on the areas of the marked squares, what percentage is the smaller value of the larger value?");
                 }
                 // Update trial progress
                 d3.select("#test-values").text(`Graph ${trialIndex + 1} / ${TOTAL_TRIALS}`);
@@ -454,6 +529,9 @@
                         .text("Experiment completed! You finished all 60 trials.");
                     answerInput.disabled = true;
                     nextButton.disabled = true;
+
+                    showSummary(TOTAL_TRIALS);
+
                     // Verify chart distribution
                     console.log("Experiment completed!");
                     console.log("Dot charts:",
@@ -466,6 +544,22 @@
                 }
                 // Generate next graph
                 generateTrial();
+            });
+
+            // Confirm before exiting the experiment might need to delete this and save on summary page launched
+            exitButton.addEventListener("click", function () {
+                // this might be problematic 
+                if (!confirm("Exit the experiment? Your current results will be lost.")) {
+                    return;
+                }
+
+                d3.select("#chart").selectAll("*").remove();
+                d3.select("#task-title").text("Experiment Exited");
+                d3.select("#task-description").text("You have exited the experiment.");
+                d3.select("#test-values").text("");
+                answerInput.disabled = true;
+                nextButton.disabled = true;
+                exitButton.disabled = true;
             });
             // START EXPERIMENT
             generateTrial();
