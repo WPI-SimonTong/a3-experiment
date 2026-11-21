@@ -201,7 +201,7 @@
                     min="0"
                     max="100"
                     step="0.01"
-                    placeholder="0-100"
+                    placeholder="1-100"
                 >
                 <div class="button-row">
                     <button class="button" id="next-question" type="button">
@@ -222,6 +222,7 @@
     <script type="module">
 
         import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+        import { addResponses } from './supabase.js';
 
         function createSquares(dataset, targetIndices, width, height) {
             const root = d3.hierarchy({
@@ -510,8 +511,8 @@
             nextButton.addEventListener("click", function () {
                 const userAnswer = Number(answerInput.value);
                 // Validate answer
-                if (answerInput.value.trim() === "" || !Number.isFinite(userAnswer) || userAnswer < 0 || userAnswer > 100) {
-                    alert("Please enter a percentage between 0 and 100.");
+                if (answerInput.value.trim() === "" || !Number.isFinite(userAnswer) || userAnswer < 1 || userAnswer > 100) {
+                    alert("Please enter a percentage between 1 and 100.");
                     return;
                 }
                 // Store trial results
@@ -532,14 +533,15 @@
 
                     showSummary(TOTAL_TRIALS);
 
-                    // Verify chart distribution
-                    console.log("Experiment completed!");
-                    console.log("Dot charts:",
-                        chartTypes.filter(t => t === "dot").length);
-                    console.log("Bar charts:",
-                        chartTypes.filter(t => t === "bar").length);
-                    console.log("Square charts:",
-                        chartTypes.filter(t => t === "square").length);
+                    // Save data 
+                    addResponses(chartTypes, truePercentages, userPercentages)
+                        .then(result => {
+                            console.log("Data saved successfully:", result);
+                        })
+                        .catch(error => {
+                            console.error("Error saving data:", error);
+                        });
+
                     return;
                 }
                 // Generate next graph
