@@ -1,19 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Value Comparison</title>
+    <style>
+        :root {
+            color-scheme: light;
+            --accent: #433c78;
+            --accent-dark: #302956;
+            --ink: #252a32;
+            --line: #d7dce2;
+            --panel: #f0f3f6;
+            --task-panel: #e2e6eb;
+        }
 
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            min-height: 100vh;
+            color: var(--ink);
+            background: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 16px;
+        }
+
+        .experiment {
+            display: grid;
+            grid-template-columns: minmax(280px, 32.2%) minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+        }
+
+        .task {
+            padding: 20px;
+            background: var(--task-panel);
+        }
+
+        .task-title {
+            margin: 0 0 7px;
+            color: var(--accent);
+            font-size: 16px;
+        }
+
+        .task-description {
+            margin: 0;
+            line-height: 1.65;
+        }
+
+        .response {
+            padding: 20px;
+        }
+
+        .answer-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+
+        .required {
+            color: #b42335;
+        }
+
+        .answer-input {
+            width: 100%;
+            height: 42px;
+            padding: 0 13px;
+            border: 1px solid var(--line);
+            border-radius: 7px;
+            outline: none;
+            background: #fff;
+            color: var(--ink);
+            font: inherit;
+            box-shadow: 0 1px 2px rgb(20 30 45 / 8%);
+        }
+
+        .answer-input::placeholder {
+            color: #a0a8b1;
+        }
+
+        .answer-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgb(67 60 120 / 15%);
+        }
+
+        .button-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .button {
+            min-height: 38px;
+            padding: 0 14px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--accent);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .button-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .button-primary:hover:not(:disabled) {
+            background: var(--accent-dark);
+        }
+
+        .button:disabled {
+            color: #aeb6bf;
+            cursor: not-allowed;
+        }
+
+        .button-primary:disabled {
+            border-color: #e1e4e8;
+            background: #e1e4e8;
+            color: #9da5ae;
+        }
+
+        .visualization {
+            min-width: 0;
+            padding: 30px 34px;
+            overflow: auto;
+        }
+
+        #chart svg {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 24px;
+        }
+
+        #test-values {
+            margin-top: 12px;
+            color: #6b7280;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 640px) {
+            .experiment {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(360px, 1fr);
+            }
+
+            .sidebar {
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .task {
+                padding: 18px 20px;
+            }
+
+            .response {
+                padding: 16px 20px 18px;
+            }
+
+            .button-row {
+                margin-top: 12px;
+            }
+
+            .visualization {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
 <body>
-    <div>
-        <b>What percentage do you believe the smaller value represents relative to the larger value?</b>
+    <main class="experiment">
+        <aside class="sidebar" aria-label="Task and response">
+            <section class="task" aria-labelledby="task-title">
+                <h1 class="task-title" id="task-title">Task:</h1>
+                <p class="task-description">
+                    Two values are marked with dots. What percentage do you believe the
+                    smaller value represents relative to the larger value?
+                </p>
+            </section>
 
-        <div id="chart"></div>
-        <div id="answer-box" style="margin-bottom: 20px">
-            <label for="answer">Answer:</label>
-            <input id="answer" placeholder="Within 2 decimal points"></input>
-        </div>
+            <div class="response" id="answer-box">
+                <label class="answer-label" for="answer">
+                    Answer: <span class="required" aria-hidden="true">*</span>
+                </label>
+                <input
+                    class="answer-input"
+                    id="answer"
+                    name="answer"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    placeholder="0-100"
+                >
+                <div class="button-row">
+                    <button class="button" id="next-question" type="button">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </aside>
 
-        <div id="test-values"></div>
-    </div>
-
+        <section class="visualization" aria-label="Value visualization">
+            <div id="chart"></div>
+            <div id="test-values"></div>
+        </section>
+    </main>
     <script type="module">
 
         import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
@@ -22,19 +227,10 @@
             const root = d3.hierarchy({
                 children: dataset.map(value => ({ value }))
             }).sum(d => d.value);
-
-            d3.pack()
-                .size([width, height])
-                .padding(2)(root);
-
-            const svg = d3.select("#chart")
-                .append("svg")
-                .attr("width", width)
-                .attr("height", height);
-
+            d3.pack().size([width, height]).padding(2)(root);
+            const svg = d3.select("#chart").append("svg").attr("width", width).attr("height", height);
             svg.selectAll("rect")
-                .data(root.leaves())
-                .enter()
+                .data(root.leaves()).enter()
                 .append("rect")
                 .attr("x", d => d.x - d.r / Math.sqrt(2))
                 .attr("y", d => d.y - d.r / Math.sqrt(2))
@@ -43,16 +239,13 @@
                 .attr("fill", "white")
                 .attr("stroke", "black")
                 .attr("stroke-width", Math.min(width, height) / 500);
-
             svg.selectAll("path")
-                .data(root.leaves().filter((d, i) => targetIndices.includes(i)))
-                .enter()
+                .data(root.leaves().filter((d, i) => targetIndices.includes(i))).enter()
                 .append("path")
                 .attr("d", d3.symbol().type(d3.symbolTriangle).size(Math.min(width, height) / 4))
                 .attr("transform", d => `translate(${d.x}, ${d.y - d.r / Math.sqrt(2) - Math.sqrt(Math.min(width, height) / (Math.sqrt(3) * 2))}) rotate(180)`)
                 .attr("fill", "black");
         }
-
         function createScatter(dataset, targetIndices, margin, width, height) {
             const svg = d3.select("#chart")
                 .append("svg")
@@ -61,7 +254,6 @@
                 .append("g")
                 .attr("transform",
                     "translate(" + margin.left + "," + margin.top + ")");
-
             // Add X Axis
             var x = d3.scaleLinear()
                 .domain([0, 100])
@@ -71,7 +263,6 @@
             svg.append("g")
                 .attr("transform", "translate(0," + height + ")")
                 .call(xAxis);
-
             // Add Y axis
             var y = d3.scaleLinear()
                 .domain([0, 0])
@@ -80,7 +271,6 @@
                 .ticks(0);
             svg.append("g")
                 .call(yAxis);
-
             // Add dots
             svg.append('g')
                 .selectAll("dot")
@@ -93,27 +283,22 @@
                 .style("fill", (d, i) => targetIndices.includes(i) ? "#000000" : "#ffffff")
                 .style("stroke", "#000000");
         }
-
         function createBar(dataset, targetIndices, margin, width, height) {
             // Create SVG
             const svg = d3.select("#chart")
                 .append("svg")
                 .attr("width", width + margin.left + margin.right)
                 .attr("height", height + margin.top + margin.bottom);
-
             const g = svg.append("g")
                 .attr("transform", `translate(${margin.left}, ${margin.top})`);
-
             // Y scale
             const yScale = d3.scaleLinear()
                 .domain([0, 100])
                 .range([height, 0]);
-
             // X scale
             const xScale = d3.scaleLinear()
                 .domain([0, 1])
                 .range([0, width]);
-
             // Y axis
             g.append("g")
                 .call(d3.axisLeft(yScale).tickValues([0, 100]));
@@ -125,7 +310,6 @@
 
             // Convert normalized values into vertical positions
             let total = 0;
-
             const blocks = dataset.map((value, index) => {
                 const block = {
                     index: index,
@@ -136,8 +320,6 @@
                 total += value;
                 return block;
             });
-
-
             // Draw the 5 blocks
             g.selectAll(".block")
                 .data(blocks)
@@ -151,7 +333,6 @@
                 .attr("fill", "white")
                 .attr("stroke", "black")
                 .attr("stroke-width", 1.5);
-
             // Add black dots to the two selected blocks
             g.append("g")
                 .selectAll("dot")
@@ -162,83 +343,136 @@
                 .attr("cy", d => yScale((d.start + d.end) / 2))
                 .attr("r", 4)
                 .style("fill", "#000000");
-
             return blocks;
         }
-
         try {
+            // TRIAL DATA STORAGE
+            const TOTAL_TRIALS = 60;
+            const numValues = 5;
+            // Three arrays storing experiment results
+            // ---------------------------------------------------------The stuff for backend
+            const chartTypes = [];
+            const truePercentages = [];
+            const userPercentages = [];
+            //---------------------------------------------------------The stuff for backend
+            let currentChartType;
+            let currentTruePercentage;
             // Chart dimensions
             const width = 500;
             const height = 500;
-            const margin = { top: 30, right: 30, bottom: 50, left: 60 };
+            const margin = {
+                top: 30,
+                right: 30,
+                bottom: 50,
+                left: 60
+            };
             const chartWidth = width - margin.left - margin.right;
             const chartHeight = height - margin.top - margin.bottom;
-
-            // Normal Data
-            const dataset = [];
-            const numValues = 5;
-            const randomUni = d3.randomUniform(0, 100);
-            const chosenValues = d3.shuffle(d3.range(numValues)).slice(0, 2);
-
-            // Minimum Spacing for scatter dot plots
-            const minSpacingPx = 12;
-            const maxDotRadius = 5;
-            const minValueSpacing =
-                ((2 * maxDotRadius + minSpacingPx) / chartWidth) * 100;
-
-
-            while (dataset.length < numValues) {
-                const candidate = randomUni();
-
-                if (dataset.every(value =>
-                    Math.abs(value - candidate) >= minValueSpacing
-                )) {
+            const answerInput = document.getElementById("answer");
+            const nextButton = document.getElementById("next-question");
+            // CREATE CHART SCHEDULE (ONLY ONCE)
+            const chartSchedule = [
+              ...Array(20).fill("dot"),
+              ...Array(20).fill("bar"),
+              ...Array(20).fill("square")
+            ];
+            // Shuffle the 60 charts once
+            d3.shuffle(chartSchedule);
+            // Make a new trial
+            function generateTrial() {
+                // Clear previous graph
+                d3.select("#chart").selectAll("*").remove();
+                // Select chart based on current trial
+                const trialIndex = userPercentages.length;
+                currentChartType = chartSchedule[trialIndex];
+                // Generate random dataset
+                const dataset = [];
+                const randomUni = d3.randomUniform(1, 100);
+                // Randomly choose two values
+                const chosenIndices = d3.shuffle(
+                  d3.range(numValues)
+                ).slice(0, 2);
+                // Minimum spacing for dot plots
+                const minSpacingPx = 12;
+                const maxDotRadius = 5;
+                const minValueSpacing = ((2 * maxDotRadius + minSpacingPx) / chartWidth) * 100;
+                while (dataset.length < numValues) {
+                  const candidate = randomUni();
+                  if (dataset.every(value =>Math.abs(value - candidate) >= minValueSpacing)){
                     dataset.push(candidate);
+                  }
                 }
+                // Normalize data
+                const sum = dataset.reduce((a, b) => a + b, 0);
+                const normalizedDataset = dataset.map(value => (value / sum) * 100);
+                // Calculate correct percentage
+                const selectedValues = chosenIndices.map(i => normalizedDataset[i]);
+                const smaller = Math.min(...selectedValues);
+                const larger = Math.max(...selectedValues);
+                currentTruePercentage = (smaller / larger) * 100;
+                // DRAW SELECTED CHART
+                if (currentChartType === "dot"){
+                  const sharedY = randomUni();
+                  const scatterData = dataset.map(x => ({x: x, y: sharedY}));
+                  createScatter(scatterData, chosenIndices, margin, chartWidth, chartHeight);
+                } 
+                else if (currentChartType === "bar"){
+                  createBar(normalizedDataset, chosenIndices, margin, chartWidth, chartHeight);
+                }
+                else if (currentChartType === "square"){
+                  createSquares(dataset, chosenIndices, chartWidth, chartHeight);
+                }
+                // Update trial progress
+                d3.select("#test-values").text(`Graph ${trialIndex + 1} / ${TOTAL_TRIALS}`);
+                // Clear previous answer
+                answerInput.value = "";
+                // Debug information
+                console.log("Trial:", trialIndex + 1);
+                console.log("Chart:", currentChartType);
+                console.log("Correct percentage:", currentTruePercentage);
             }
-            console.log("Random Dataset:", dataset);
-
-            // Scatter Plot Shared Y Data
-            const sharedY = randomUni();
-            const scatter_data = dataset.map(x => ({ x, y: sharedY }));
-
-            // Normalize data
-            const sum = dataset.reduce((a, b) => a + b, 0);
-            const normalizedDataset = dataset.map(v => (v / sum) * 100);
-
-            // Target Indicies / Pairs
-            const chosenIndices = chosenValues;
-            const selectedValues = chosenIndices.map(i => normalizedDataset[i]);
-            const smaller = Math.min(...selectedValues);
-            const larger = Math.max(...selectedValues);
-            const answer = (smaller / larger) * 100;
-
-            createSquares(dataset, chosenIndices, chartWidth, chartHeight);
-            createScatter(scatter_data, chosenIndices, margin, chartWidth, chartHeight);
-            const blocks = createBar(normalizedDataset, chosenIndices, margin, chartWidth, chartHeight);
-
-            // Print testing information
-            console.log("Block values:", normalizedDataset);
-            console.log("Selected blocks:", chosenIndices);
-            console.log("Correct answer:", Math.round(answer) + "%");
-
-            // Display actual values for testing only
-            d3.select("#test-values").html(`
-      <b>TESTING ONLY - Actual block values listed from bottom to top:</b><br>
-      ${blocks.map(d =>
-                `Block ${d.index + 1}: ${Math.round(d.value)}%`
-            ).join("<br>")}
-      <br><b>Selected blocks:</b> ${chosenIndices.map(i => i + 1).join(", ")}
-      <br><b>Correct answer:</b> ${Math.round(answer)}%
-    `);
-
+            // NEXT BUTTON
+            nextButton.addEventListener("click", function () {
+                const userAnswer = Number(answerInput.value);
+                // Validate answer
+                if (answerInput.value.trim() === "" || !Number.isFinite(userAnswer) || userAnswer < 0 || userAnswer > 100) {
+                    alert("Please enter a percentage between 0 and 100.");
+                    return;
+                }
+                // Store trial results
+                chartTypes.push(currentChartType);
+                truePercentages.push(currentTruePercentage);
+                userPercentages.push(userAnswer);
+                // Print arrays
+                console.log("Chart Types:", chartTypes);
+                console.log("True Percentages:", truePercentages);
+                console.log("User Percentages:", userPercentages);
+                // CHECK EXPERIMENT COMPLETION
+                if (userPercentages.length === TOTAL_TRIALS) {
+                    d3.select("#chart").selectAll("*").remove();
+                    d3.select("#test-values")
+                        .text("Experiment completed! You finished all 60 trials.");
+                    answerInput.disabled = true;
+                    nextButton.disabled = true;
+                    // Verify chart distribution
+                    console.log("Experiment completed!");
+                    console.log("Dot charts:",
+                        chartTypes.filter(t => t === "dot").length);
+                    console.log("Bar charts:",
+                        chartTypes.filter(t => t === "bar").length);
+                    console.log("Square charts:",
+                        chartTypes.filter(t => t === "square").length);
+                    return;
+                }
+                // Generate next graph
+                generateTrial();
+            });
+            // START EXPERIMENT
+            generateTrial();
         } catch (err) {
             console.error("Error generating random data:", err);
-            d3.select("#test-values")
-                .text(`Unable to render the graphs: ${err.message}`);
+            d3.select("#test-values").text(`Unable to render the graphs: ${err.message}`);
         }
-
     </script>
 </body>
-
 </html>
