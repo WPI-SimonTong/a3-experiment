@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examples</title>
+
+    <style>
+        :root {
+            color-scheme: light;
+            --accent: #433c78;
+            --accent-dark: #302956;
+            --ink: #252a32;
+            --line: #d7dce2;
+            --panel: #f0f3f6;
+            --task-panel: #e2e6eb;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-width: 320px;
+            min-height: 100vh;
+            color: var(--ink);
+            background: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 16px;
+        }
+
+        .experiment {
+            display: grid;
+            grid-template-columns: minmax(280px, 32.2%) minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            background: var(--panel);
+            border-right: 1px solid var(--line);
+        }
+
+        .task {
+            padding: 20px;
+            background: var(--task-panel);
+        }
+
+        .task-title {
+            margin: 0 0 7px;
+            color: var(--accent);
+            font-size: 16px;
+        }
+
+        .task-description {
+            margin: 0;
+            line-height: 1.65;
+        }
+
+        .response {
+            padding: 20px;
+        }
+
+        .example {
+            display: none;
+        }
+
+        .example.active {
+            display: block;
+        }
+
+        .example h2 {
+            margin: 0 0 12px;
+            font-size: 20px;
+        }
+
+        .example p {
+            margin: 0;
+            line-height: 1.65;
+        }
+
+        .button-row {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .button {
+            min-height: 38px;
+            padding: 0 14px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--accent);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .button-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .button-primary:hover:not(:disabled) {
+            background: var(--accent-dark);
+        }
+
+        .button:disabled {
+            color: #aeb6bf;
+            cursor: not-allowed;
+        }
+
+        .button-primary:disabled {
+            border-color: #e1e4e8;
+            background: #e1e4e8;
+            color: #9da5ae;
+        }
+
+        .visualization {
+            min-width: 0;
+            padding: 30px 34px;
+            overflow: auto;
+        }
+
+        .visualization img {
+            display: none;
+            width: 450px;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .visualization img.active {
+            display: block;
+        }
+
+        @media (max-width: 640px) {
+            .experiment {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto minmax(360px, 1fr);
+            }
+
+            .sidebar {
+                border-right: 0;
+                border-bottom: 1px solid var(--line);
+            }
+
+            .task {
+                padding: 18px 20px;
+            }
+
+            .response {
+                padding: 16px 20px 18px;
+            }
+
+            .button-row {
+                margin-top: 12px;
+            }
+
+            .visualization {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <main class="experiment">
+
+        <aside class="sidebar">
+
+            <section class="task">
+                <h1 class="task-title">Example: <span id="example-counter">1 / 3</span></h1>
+                <p class="task-description">Examples of the chart types you will see.
+                    Please review each example then begin the test.
+                    Once in the test, you must answer all 60 questions before leaving the page or else your results will not be saved.
+                    You must answer each question before moving on to the next one, and you cannot go back to previous questions.
+                </p>
+            </section>
+
+            <div class="response">
+                <h3>How to Interpret</h3>
+
+                <div class="example active">
+                    <p>The 5 values in this chart are represented by the area each square.</p>
+                </div>
+
+                <div class="example">
+                    <p>The 5 values in this chart are represented by each point's x-value.</p>
+                </div>
+
+                <div class="example">
+                    <p>The 5 values in this chart are represented by the height of each section, <em>not</em> the total height of the bar up to that section.</p>
+                </div>
+
+            </div>
+
+            <div class="button-row">
+                <button class="button button-row" onclick="nextExample()" type="button">
+                    Next
+                </button>
+
+                <button id="begin-test" class="button button-primary" onclick="window.location.href='experiment.html'" type="button" style="display: none;">
+                    Begin Test
+                </button>
+            </div>
+
+        </aside>
+
+        <section class="visualization">
+            <img class="active" src="img/squares.png">
+            <img src="img/dots.png">
+            <img src="img/bar.png">
+        </section>
+
+    </main>
+
+    <script>
+        let current = 0;
+        let allExamplesSeen = false;
+
+        function nextExample() {
+            document.querySelectorAll(".example")[current].classList.remove("active");
+            document.querySelectorAll(".visualization img")[current].classList.remove("active");
+
+            current = (current + 1) % 3;
+            if (current === 2) {
+                allExamplesSeen = true;
+            }
+
+            document.querySelectorAll(".example")[current].classList.add("active");
+            document.querySelectorAll(".visualization img")[current].classList.add("active");
+
+            document.getElementById("example-counter").textContent = `${current + 1} / 3`;
+
+            document.getElementById("begin-test").style.display = allExamplesSeen ? "inline-block" : "none";
+        }
+    </script>
+
+</body>
+</html>
