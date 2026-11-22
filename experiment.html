@@ -359,8 +359,8 @@
             let currentChartType;
             let currentTruePercentage;
             // Chart dimensions
-            const width = 500;
-            const height = 500;
+            const width = Math.min(500, window.innerWidth);
+            const height = width;
             const margin = {
                 top: 30,
                 right: 30,
