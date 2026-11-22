@@ -1,0 +1,2 @@
+ALTER TABLE public.responses
+ADD COLUMN "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW();
