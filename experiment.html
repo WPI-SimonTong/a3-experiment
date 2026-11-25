@@ -112,6 +112,19 @@
             cursor: pointer;
         }
 
+        .button-red {
+            min-height: 38px;
+            padding: 0 14px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            background: transparent;
+            color: #df4756;
+            font: inherit;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
         .button-primary {
             background: var(--accent);
             color: #fff;
@@ -204,6 +217,9 @@
                     placeholder="1-100"
                 >
                 <div class="button-row">
+                    <button class="button-red" id="submit-early" type="button">
+                        Submit Early
+                    </button>
                     <button class="button" id="next-question" type="button">
                         Next
                     </button>
@@ -371,6 +387,7 @@
             const chartHeight = height - margin.top - margin.bottom;
             const answerInput = document.getElementById("answer");
             const nextButton = document.getElementById("next-question");
+            const submitEarlyButton = document.getElementById("submit-early");  
             const exitButton = document.getElementById("exit-experiment");
 
             // Show average response differences for each chart type
@@ -383,7 +400,7 @@
 
                 d3.select("#task-title").text("Experiment Summary:");
                 d3.select("#task-description").text(
-                    `Thank you for completing all ${trialCount} trials! Your scores have been saved. Average differences from the true percentage:`
+                    `Thank you for completing ${trialCount} trials! Your scores have been saved. Average differences from the true percentage:`
                 );
                 d3.select("#test-values").html("");
 
@@ -548,9 +565,42 @@
                 generateTrial();
             });
 
+            // SUBMIT EARLY BUTTON
+            submitEarlyButton.addEventListener("click", function () {
+                if (!confirm("Finish early? Your test will end early and your current progress will be submitted.")) {
+                    return;
+                }
+
+                // Save current answer if valid
+                const userAnswer = Number(answerInput.value);
+                if (answerInput.value.trim() !== "" && Number.isFinite(userAnswer) && userAnswer >= 1 && userAnswer <= 100) {
+                    chartTypes.push(currentChartType);
+                    truePercentages.push(currentTruePercentage);
+                    userPercentages.push(userAnswer);
+                }
+
+                // Save responses
+                addResponses(chartTypes, truePercentages, userPercentages)
+                    .then(result => {
+                        console.log("Data saved successfully:", result);
+                    })
+                    .catch(error => {
+                        console.error("Error saving data:", error);
+                    });
+
+                // Display summary based on completed trials
+                d3.select("#chart").selectAll("*").remove();
+                d3.select("#test-values").text("Experiment submitted early.");
+
+                answerInput.disabled = true;
+                nextButton.disabled = true;
+                submitEarlyButton.disabled = true;
+
+                showSummary(userPercentages.length);
+            });
+
             // Confirm before exiting the experiment
             exitButton.addEventListener("click", function () {
-                // this might be problematic 
                 if (!confirm("Thank you for participating! Your answers have been saved for analysis. Once you leave this page, you will not be able to view your individual results again.")) {
                     return;
                 }
